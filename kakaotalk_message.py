@@ -1,48 +1,32 @@
-# 식단표 크롤링
-from selenium import webdriver  # 웹수집 자동화를 위한 크롬 드라이버 호출
-from selenium.webdriver.common.by import By
-from datetime import datetime
-
-options = webdriver.ChromeOptions()
-options.add_experimental_option("excludeSwitches", ["enable-logging"])
-driver = webdriver.Chrome()  # 크롬 드라이버 경로 설정
-
-driver.get("https://www.korea.ac.kr/user/restaurantMenuAllList.do?siteId=university&id=university_050402000000")
-
-today = datetime.today().weekday()
-path = f'/html/body/div[4]/div[2]/div[2]/div[2]/div/ul/li[2]/ol[{today+1}]/li/div'
-
-menulist = driver.find_element(By.XPATH,path).text.split('[')
-studnet_menu = menulist[1].split('▶')
-staff_menu = menulist[2].split('▶')
-
-#학생식당
-student_menulist = '[학생식당] - 5,000원\n'
-for i in range(1, len(studnet_menu)):
-  student_menulist += "\n▶" + studnet_menu[i]
-
-#교직원식당
-staff_menulist = '[교직원식당]\n'
-for i in range(1, len(staff_menu)):
-  staff_menulist += "\n▶" + staff_menu[i]
-
-sendText = student_menulist + "\n" + staff_menulist
-
-# 카카오톡
 import requests
 import json
 
-access_token = "REST API 키"
+# 저장된 refresh_token 불러와서 엑세스 토큰 갱신하기
+with open("kakao_code.json", "r",encoding="utf-8") as fp:
+    json_data = json.load(fp)
+    refresh_token = json_data['refresh_token']
+url = "https://kauth.kakao.com/oauth/token"
+header = {"Content-Type": "application/x-www-form-urlencoded"}
+data = {
+    "grant_type": "refresh_token",
+    "client_id": "REST API 키",
+    "refresh_token": refresh_token
+}
+response = requests.post(url, headers=header, data=data)
+tokens = response.json()
+# 갱신한 엑세스 토큰 저장하기
+json_data['access_token'] = tokens['access_token']
+with open("kakao_code.json", "w") as fp:
+    json.dump(json_data, fp)
+access_token = tokens['access_token']
 
 # 친구 목록 불러오기
-url = "https://kapi.kakao.com/v1/api/talk/friends"
-header = {"Authorization": 'Bearer ' + access_token}
-result = json.loads(requests.get(url, headers=header).text)
-friends_list = result.get("elements")
-for i in range(len(friends_list)):
-  friend_id = friends_list[i].get("uuid")
+with open("uuid.json", "r") as fl:
+  friends_list = json.load(fl)
 
-  # 채팅 보내기
+# 친구들에게 카톡 메세지 보내기
+for i in range(1,len(friends_list)):
+  friend_id = friends_list[i]["uuid"]
   url = 'https://kapi.kakao.com/v1/api/talk/friends/message/default/send'
   headers = {
       # 엑세스 토큰
@@ -52,7 +36,7 @@ for i in range(len(friends_list)):
   'receiver_uuids': '["{}"]'.format(friend_id),
       "template_object": json.dumps({
           "object_type":"text",
-          "text":"오늘의 식단표\n" + sendText,
+          "text":"보낼 메세지",
           "link":{
               "web_url" : "https://www.korea.ac.kr/user/restaurantMenuAllList.do?siteId=university&id=university_050402000000",
               "mobile_web_url" : "https://www.korea.ac.kr/user/restaurantMenuAllList.do?siteId=university&id=university_050402000000"
