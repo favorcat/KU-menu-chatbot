@@ -28,7 +28,7 @@ with open("uuid.json", "r") as fl:
 for i in range(1,len(friends_list)):
   friend_id = friends_list[i]["uuid"]
   url = 'https://kapi.kakao.com/v1/api/talk/friends/message/default/send'
-  headers = {
+  header = {
       # 엑세스 토큰
       "Authorization": "Bearer " + access_token
   }
